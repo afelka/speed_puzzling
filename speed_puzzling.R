@@ -6,6 +6,8 @@ library(stringi)
 library(lubridate)
 library(ggplot2)
 library(ggimage)
+library(magick)
+library(RColorBrewer)
 
 #Create table manually for the names and urls of different competitions 
 urls <- data.frame(name = c("WPC 2019",
@@ -97,6 +99,7 @@ readUrl <- function(url) {
 #create an empty data.frame
 total_list <- data.frame(name = character(),
                          image_name = character(),
+                         cropped_image_name = character(),
                          top_20_average = character())
 
 # go through the urls one by one and get average minutes for top 20 contestants and 
@@ -125,7 +128,33 @@ image_name <- paste0(gsub(" ","_",str_to_lower(gsub("[^[:alnum:][:space:]]","",u
 
 download.file(image_url, destfile = image_name ,mode = "wb")
 
-temp_data_frame <- data.frame(name =  urls$name[i], image_name, top_20_average)
+# Read the image
+img <- image_read(image_name)
+
+# Get the image information
+info <- image_info(img)
+
+# Check the dimensions
+width <- info$width
+height <- info$height
+print(paste("Width:", width, "Height:", height))
+
+# Crop the image to remove the empty spaces on the sides
+new_width <- as.integer(round((width / 10) * 7.75,0))
+width_diff <- as.integer((width - new_width) / 2)
+units_to_crop_top <- as.integer(round((height / 10) * 1.75,0))
+new_height <- height - units_to_crop_top
+top_crop <- units_to_crop_top 
+
+geometry <- sprintf("%dx%d+%d+%d", new_width, new_height, width_diff, top_crop)
+cropped_img <- image_crop(img, geometry = geometry)
+
+cropped_image_name <- paste0(gsub(" ","_",str_to_lower(gsub("[^[:alnum:][:space:]]","",urls$name[i]))),"_cropped.jpg")
+
+# Save the cropped image
+image_write(cropped_img, path = cropped_image_name)
+
+temp_data_frame <- data.frame(name =  urls$name[i], image_name, cropped_image_name, top_20_average)
 
 total_list <<-  rbind(total_list , temp_data_frame)
 
